@@ -59,7 +59,7 @@ public class StaticFileHandler extends AbstractResourceHandler {
 
 	public StaticFileHandler(String dir) {
 		this(new File(dir));
-		System.out.println("*** dir =  '" + dir + "'");
+		// System.out.println("*** dir =  '" + dir + "'");
 		logger.info("*** dir =  '" + dir + "'");
 	}
 
@@ -215,7 +215,13 @@ public class StaticFileHandler extends AbstractResourceHandler {
 
 		protected File resolveFile(String path) throws IOException {
 			// Find file, relative to root
+			// logger.info("dir=" + dir);
+			// logger.info("path=" + path);
 			File result = new File(dir, path).getCanonicalFile();
+			logger.info("carregando arquivo '" + result + "'");
+			if (!result.exists()) {
+				logger.error("arquivo '" + result + "' não existe.");
+			}
 
 			// For security, check file really does exist under root.
 			String fullPath = result.getPath();
