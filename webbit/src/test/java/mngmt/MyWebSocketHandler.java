@@ -1,9 +1,13 @@
 package mngmt;
 
+import java.util.Collection;
+
 import org.apache.log4j.Logger;
 import org.webbitserver.WebSocketConnection;
 
 import com.google.gson.Gson;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonParser;
 
 public class MyWebSocketHandler implements MessageHandler {
 	private static Logger logger = Logger.getLogger(MyWebSocketHandler.class);
@@ -31,8 +35,70 @@ public class MyWebSocketHandler implements MessageHandler {
 		throw new NotImplementedException();
 	}
 
-	private void getData(WebSocketConnection connection, String params) {
-		throw new NotImplementedException();
+	enum ParamType {
+		DateOnly, DateFollowedByIntegerArray, DateFollowedByString
+	}
+
+	/**
+	 * @param connection
+	 * @param params
+	 */
+	private void getData(WebSocketConnection connection, Collection<?> params) {
+		// com.google.gson.internal.LinkedTreeMap
+		// class LinkedTreeMap<K, V> extends java.util.AbstractMap<K, V>
+		// implements Serializable
+		// SimpleDate params1 = json.fromJson(params.toString(),
+		// SimpleDate.class);
+
+		System.out.println("\n\n" + params);
+		// System.out.println(params1);
+		Gson gson = new Gson();
+		// @SuppressWarnings("rawtypes")
+		// Collection collection = new ArrayList();
+		String json = gson.toJson(params);
+
+		System.out.println("Using gson.toJson() on a raw collection: " + json);
+		JsonParser parser = new JsonParser();
+		JsonArray array = parser.parse(json).getAsJsonArray();
+		ParamType paramType = gson.fromJson(array.get(0), ParamType.class);
+		SimpleDate simpleDate = null;
+
+		// Teste de serialização
+		// Collection<Integer> ints = new ArrayList<Integer>();
+		// ints.add(1);
+		// ints.add(3);
+		// ints.add(2);
+		// System.out.println("ints json = " + gson.toJson(ints));
+
+		switch (paramType) {
+		// { action: "GET_DATA", params: [ "DateOnly", { year: 2013, month:8,
+		// day:21 } ]
+		// }
+		case DateOnly:
+			simpleDate = gson.fromJson(array.get(1), SimpleDate.class);
+			System.out.printf("Using gson.fromJson() to get: %s", simpleDate);
+			break;
+		// { action: "GET_DATA", params: [ "DateFollowedByIntegerArray", { year:
+		// 2013, month:8, day:21 }, [ 1, 3, 2 ] ] }
+		case DateFollowedByIntegerArray:
+			simpleDate = gson.fromJson(array.get(1), SimpleDate.class);
+			@SuppressWarnings("unchecked")
+			Collection<Integer> inteiros = gson.fromJson(array.get(2),
+					Collection.class);
+			System.out.printf("Using gson.fromJson() to get: %s",
+					inteiros.toString());
+			break;
+		// { action: "GET_DATA", params: [ "DateFollowedByString", { year: 2013,
+		// month:8, day:21 }, "Uma String qualquer pode vir aqui !" ] }
+		case DateFollowedByString:
+			simpleDate = gson.fromJson(array.get(1), SimpleDate.class);
+			String stringQualquer = gson.fromJson(array.get(2), String.class);
+			System.out.printf("Using gson.fromJson() to get: %s",
+					stringQualquer);
+			break;
+		default:
+			throw new NotImplementedException("paramType = " + paramType);
+		}
 	}
 
 	private void putData(WebSocketConnection connection, String params) {
@@ -53,14 +119,15 @@ public class MyWebSocketHandler implements MessageHandler {
 		// GET_DATA params
 		case GET_DATA:
 			// exemplos
-			// 1. Incoming => '{ action: "GET_DATA", value:2 }'
+			// 1. Incoming =>
+			// '{ action: "GET_DATA", params: { year: 2013, month:8, day:21 } }'
 			// retornará por exemplo:
 			// {"action":"RETURN","code":0, message:"OK", data: ['x','y', ...]}
 			getData(connection, incoming.params);
 			break;
 		// PUT_DATA params
 		case PUT_DATA:
-			putData(connection, incoming.params);
+			// putData(connection, incoming.params);
 			break;
 		}
 	}
@@ -78,6 +145,16 @@ public class MyWebSocketHandler implements MessageHandler {
 	}
 }
 
+class SimpleDate {
+	public Integer year, month, day;
+
+	@Override
+	public String toString() {
+		return "SimpleDate [year=" + year + ", month=" + month + ", day=" + day
+				+ "]";
+	}
+}
+
 class Incoming {
 	enum Action {
 		LOGIN, GET_DATA, PUT_DATA
@@ -90,7 +167,8 @@ class Incoming {
 	String username;
 	String timestamp;
 	String hash;
-	String params;
+	// Coleção de alguma tralha qualquer (objetos arbitrários do JavaScript)
+	Collection<?> params;
 }
 
 class Outgoing {
