@@ -394,12 +394,16 @@ public class NettyWebServer implements WebServer {
 	private static URI localUri(int port) {
 		URI uri = null;
 		try {
-			uri = URI.create("http://"
-					+ InetAddress.getLocalHost().getHostName()
-					+ (port == 80 ? "" : (":" + port)) + "/");
-			logger.info("*** uri = '" + uri + "'");
+			InetAddress localhostUri = InetAddress.getLocalHost();
+			logger.info("*** localhostUri = '" + localhostUri + "'");
+			if (localhostUri != null) {
+				String uriStr = "http://" + localhostUri.getHostName()
+						+ (port == 80 ? "" : (":" + port)) + "/";
+				logger.info("*** uriStr = '" + uriStr + "'");
+				uri = URI.create(uriStr);
+				logger.info("*** uri = '" + uri + "'");
+			}
 			return uri;
-
 		} catch (UnknownHostException e) {
 			throw new RuntimeException(
 					"can not create URI from localhost hostname - use constructor to pass an explicit URI",
