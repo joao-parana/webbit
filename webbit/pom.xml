@@ -96,6 +96,17 @@
 			<version>2.2.4</version>
 			<scope>test</scope>
 		</dependency>
+
+		<dependency>
+			<groupId>br.cepel.soma</groupId>
+			<artifactId>somaCommon</artifactId>
+			<version>1.5-SNAPSHOT</version>
+		</dependency>
+		<dependency>
+			<groupId>br.cepel.soma</groupId>
+			<artifactId>somaPersistence</artifactId>
+			<version>1.5-SNAPSHOT</version>
+		</dependency>
 	</dependencies>
 	<build>
 		<plugins>
