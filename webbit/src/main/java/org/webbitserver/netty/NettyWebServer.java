@@ -395,13 +395,13 @@ public class NettyWebServer implements WebServer {
 		URI uri = null;
 		try {
 			InetAddress localhostUri = InetAddress.getLocalHost();
-			logger.info("*** localhostUri = '" + localhostUri + "'");
+			logger.debug("*** localhostUri = '" + localhostUri + "'");
 			if (localhostUri != null) {
 				String uriStr = "http://" + localhostUri.getHostName()
 						+ (port == 80 ? "" : (":" + port)) + "/";
-				logger.info("*** uriStr = '" + uriStr + "'");
+				logger.debug("*** uriStr = '" + uriStr + "'");
 				uri = URI.create(uriStr);
-				logger.info("*** uri = '" + uri + "'");
+				logger.debug("*** uri = '" + uri + "'");
 			}
 			return uri;
 		} catch (UnknownHostException e) {
