@@ -2,6 +2,8 @@ package mngmt;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.GregorianCalendar;
+import java.util.TimeZone;
 
 import org.apache.log4j.Logger;
 import org.apache.log4j.PropertyConfigurator;
@@ -10,6 +12,8 @@ import org.webbitserver.WebServer;
 import org.webbitserver.WebServers;
 import org.webbitserver.WebSocketConnection;
 import org.webbitserver.handler.StaticFileHandler;
+
+import br.cepel.common.Configuration;
 
 public class MngmtWebSockets extends BaseWebSocketHandler {
 	private static Logger logger = Logger.getLogger(MngmtWebSockets.class);
@@ -57,8 +61,21 @@ public class MngmtWebSockets extends BaseWebSocketHandler {
 			PropertyConfigurator.configureAndWatch(fullPath);
 		}
 		logger.info("Log4J inicializado.");
+		// Mes começa de Zero. Ano e Dia começa de UM
+		// Exemplo Zero Hora GMT do dia 10/09/2013
+		GregorianCalendar g = new GregorianCalendar(2013, 9 - 1, 10);
+		g.setTimeZone(TimeZone.getTimeZone("GMT"));
+		logger.info("GregorianCalendar milis = " + g.getTimeInMillis());
+		logger.info("System milis            = " + System.currentTimeMillis());
 
+		Configuration.initializeForJUnitTest(".");
 		logger.info("Time to load " + MngmtWebSockets.doIt(args) + " milis.");
+	}
+
+	private static String getCurrentDir() {
+		String currDir = "";
+		currDir = (new File(".")).getAbsolutePath();
+		return currDir;
 	}
 
 	public static long doIt(String[] args) {
@@ -75,4 +92,3 @@ public class MngmtWebSockets extends BaseWebSocketHandler {
 		return System.currentTimeMillis() - x;
 	}
 }
-
