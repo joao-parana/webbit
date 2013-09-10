@@ -66,6 +66,7 @@
 			</releases>
 		</repository>
 	</repositories>
+		
 	<dependencies>
 		<dependency>
 			<groupId>io.netty</groupId>
@@ -100,12 +101,12 @@
 		<dependency>
 			<groupId>br.cepel.soma</groupId>
 			<artifactId>somaCommon</artifactId>
-			<version>1.5-SNAPSHOT</version>
+			<version>1.5.0</version>
 		</dependency>
 		<dependency>
 			<groupId>br.cepel.soma</groupId>
 			<artifactId>somaPersistence</artifactId>
-			<version>1.5-SNAPSHOT</version>
+			<version>1.5.0</version>
 		</dependency>
 	</dependencies>
 	<build>
