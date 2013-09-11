@@ -1,9 +1,9 @@
 package mngmt;
 
-//import javax.xml.bind.JAXBContext;
-//import javax.xml.bind.Marshaller;
-//import javax.xml.bind.Unmarshaller;
-//import javax.xml.transform.stream.StreamSource;
+// import javax.xml.bind.JAXBContext;
+// import javax.xml.bind.Marshaller;
+// import javax.xml.bind.Unmarshaller;
+// import javax.xml.transform.stream.StreamSource;
 
 import java.lang.reflect.Type;
 import java.util.ArrayList;
@@ -30,6 +30,7 @@ import util.PersistenceUtil;
 import br.cepel.asset.PersistenceUnitName;
 
 import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonParser;
 import com.google.gson.reflect.TypeToken;
@@ -102,7 +103,8 @@ public class MyWebSocketHandler implements MessageHandler {
 
 		System.out.println("\n\n" + params);
 		// System.out.println(params1);
-		Gson gson = new Gson();
+		// posso criar simplesmente assim new Gson(); ou ...
+		Gson gson = new GsonBuilder().setPrettyPrinting().create();
 		// @SuppressWarnings("rawtypes")
 		// Collection collection = new ArrayList();
 		String json = gson.toJson(params);
@@ -192,7 +194,8 @@ public class MyWebSocketHandler implements MessageHandler {
 						simpleDate.month, simpleDate.day,
 						(List<Long>) dataSourceIdList);
 		logger.info(tudinho);
-		Gson gson = new Gson();
+		// posso criar simplesmente assim new Gson(); ou ...
+		Gson gson = new GsonBuilder().setPrettyPrinting().create();
 		Collection<Collection<Double>> tudo = new ArrayList<Collection<Double>>();
 		Collection<Double> linha = new ArrayList<Double>();
 		String json = gson.toJson(tudinho);
