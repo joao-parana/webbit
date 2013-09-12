@@ -1,9 +1,9 @@
 package mngmt;
 
-//import javax.xml.bind.JAXBContext;
-//import javax.xml.bind.Marshaller;
-//import javax.xml.bind.Unmarshaller;
-//import javax.xml.transform.stream.StreamSource;
+// import javax.xml.bind.JAXBContext;
+// import javax.xml.bind.Marshaller;
+// import javax.xml.bind.Unmarshaller;
+// import javax.xml.transform.stream.StreamSource;
 
 import java.lang.reflect.Type;
 import java.util.ArrayList;
@@ -30,6 +30,7 @@ import util.PersistenceUtil;
 import br.cepel.asset.PersistenceUnitName;
 
 import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonParser;
 import com.google.gson.reflect.TypeToken;
@@ -54,6 +55,14 @@ public class MyWebSocketHandler implements MessageHandler {
 	private ApplicationService applicationService;
 
 	private HistoricalServiceFacade historicalServiceFacade;
+
+	public static double[][] transposeMatrix(double[][] m) {
+		double[][] temp = new double[m[0].length][m.length];
+		for (int i = 0; i < m.length; i++)
+			for (int j = 0; j < m[0].length; j++)
+				temp[j][i] = m[i][j];
+		return temp;
+	}
 
 	public MyWebSocketHandler() {
 		super();
@@ -102,7 +111,8 @@ public class MyWebSocketHandler implements MessageHandler {
 
 		System.out.println("\n\n" + params);
 		// System.out.println(params1);
-		Gson gson = new Gson();
+		// posso criar simplesmente assim new Gson(); ou ...
+		Gson gson = new GsonBuilder().setPrettyPrinting().create();
 		// @SuppressWarnings("rawtypes")
 		// Collection collection = new ArrayList();
 		String json = gson.toJson(params);
@@ -144,10 +154,12 @@ public class MyWebSocketHandler implements MessageHandler {
 			for (Long long1 : inteiros) {
 				logger.info(long1 + " " + long1.getClass().getCanonicalName());
 			}
-			logger.info("Using gson.fromJson() to get: " + inteiros.toString());
+			logger.debug("Using gson.fromJson() to get: " + inteiros.toString());
 			String ret = getHistoricalAvgByDateAndDataSourceList(simpleDate,
 					inteiros);
-			logger.info(ret);
+			logger.info("-------------------------------------"
+					+ "-------------------------------------\n" + ret);
+			connection.send(ret);
 			break;
 		// { action: "GET_DATA", params: [ "DateFollowedByStringArray",
 		// { year: 2013, month:8, day:21 },
@@ -187,17 +199,53 @@ public class MyWebSocketHandler implements MessageHandler {
 	private String getHistoricalAvgByDateAndDataSourceList(
 			SimpleDate simpleDate, List<? extends Number> dataSourceIdList) {
 		@SuppressWarnings("unchecked")
-		Collection<Collection<Double>> tudinho = historicalServiceFacade
-				.getHistoricalAvgByDateAndDataSourceList(simpleDate.year,
-						simpleDate.month, simpleDate.day,
-						(List<Long>) dataSourceIdList);
-		logger.info(tudinho);
-		Gson gson = new Gson();
-		Collection<Collection<Double>> tudo = new ArrayList<Collection<Double>>();
-		Collection<Double> linha = new ArrayList<Double>();
-		String json = gson.toJson(tudinho);
-		return json;
+		HistoricalMeasurements historicalMeasurements = new HistoricalMeasurements();
+		try {
+			historicalMeasurements.historical = historicalServiceFacade
+					.getHistoricalAvgByDateAndDataSourceList(simpleDate.year,
+							simpleDate.month, simpleDate.day,
+							(List<Long>) dataSourceIdList);
+			logger.info(historicalMeasurements.historical);
+			if (historicalMeasurements.historical.size() == 0) {
+				String msg = "Não foi encontrado nenhum registro de histórico para as fontes de dado "
+						+ dataSourceIdList;
+				historicalMeasurements.code = 2001;
+				historicalMeasurements.message = msg;
+				logger.warn(msg);
+			} else {
+				if (historicalMeasurements.historical.size() != (dataSourceIdList
+						.size() + 1)) {
+					String msg = "Número de vetores de dados deveria ser "
+							+ (dataSourceIdList.size()) + " mas veio "
+							+ (historicalMeasurements.historical.size() - 1)
+							+ ". dataSourceIdList = " + dataSourceIdList;
+					historicalMeasurements.code = 2002;
+					historicalMeasurements.message = msg;
+					logger.warn(msg);
+				}
+			}
+		} catch (Exception e) {
+			historicalMeasurements.code = 1000;
+			historicalMeasurements.message = e.getClass().getCanonicalName()
+					+ " - " + e.getLocalizedMessage();
+		}
 
+		// posso criar simplesmente assim new Gson(); ou ...
+		Gson gson = new GsonBuilder().setPrettyPrinting()
+				.serializeSpecialFloatingPointValues().create();
+
+		// Collection<Collection<Double>> tudo = new
+		// ArrayList<Collection<Double>>();
+		// Collection<Double> linha = new ArrayList<Double>();
+		HistoricalMeasurements hm = historicalMeasurements.clone();
+		DataTable dataTable = new DataTable();
+		dataTable.aaData = hm.historical;
+		dataTable.aoColumns.add(new DataTableColumnHeader("velocidade2d"));
+		dataTable.aoColumns.add(new DataTableColumnHeader("direcao2d"));
+		dataTable.aoColumns.add(new DataTableColumnHeader("azVelocidade3d"));
+		historicalMeasurements.dataTable = dataTable;
+		String json = gson.toJson(historicalMeasurements);
+		return json;
 	}
 
 	private void putData(WebSocketConnection connection, String params) {
@@ -206,12 +254,16 @@ public class MyWebSocketHandler implements MessageHandler {
 
 	public void onMessage(WebSocketConnection connection, String message) {
 		// echo back message in uppercase
-		logger.info("MSG = '" + message + "'");
-		connection.send(message.toUpperCase());
+
 		Incoming incoming = json.fromJson(message, Incoming.class);
+		String msg = "";
 		switch (incoming.action) {
 		// LOGIN username, timestamp, hash
 		case LOGIN:
+			msg = "o LOGIN";
+			connection.send("{ \"code\": " + 9005 + ", \"message\": \""
+					+ "Aguardando até um máximo de 5 segundos para processar "
+					+ msg + "\" }");
 			login(connection, incoming.username, incoming.timestamp,
 					incoming.hash);
 			break;
@@ -222,10 +274,18 @@ public class MyWebSocketHandler implements MessageHandler {
 			// '{ action: "GET_DATA", params: { year: 2013, month:8, day:21 } }'
 			// retornará por exemplo:
 			// {"action":"RETURN","code":0, message:"OK", data: ['x','y', ...]}
+			msg = "o GET_DATA";
+			connection.send("{ \"code\": " + 9025 + ", \"message\": \""
+					+ "Aguardando até 25 segundos para processar " + msg
+					+ "\" }");
 			getData(connection, incoming.params);
 			break;
 		// PUT_DATA params
 		case PUT_DATA:
+			msg = "o GET_DATA";
+			connection.send("{ \"code\": " + 9025 + ", \"message\": \""
+					+ "Aguardando até 25 segundos para processar " + msg
+					+ "\" }");
 			// putData(connection, incoming.params);
 			break;
 		}
@@ -376,4 +436,95 @@ class Outgoing {
 	Integer code;
 	String message;
 	byte[] data;
+}
+
+// Códigos de Erro / Retorno:
+// 0 - Sem Erro e a mensagem vai vazia
+// de 1000 à 1999 - Erro grave
+// de 2000 à 2999 - Warnings
+// de 9000 à 9999 - Não é erro e indica que o processo foi iniciado no Servidor
+// e a resposta sairá em breve em outra mensagem. A diferença entre 9999 e 9000
+// dá aquantidade máxima de tempo (em segundos) a ser esperada pelo outra
+// resposta e 999 significa infinito.
+// Nas situações de erro a propriedade historical pode não fazer sentido e não
+// deve ser usada
+class HistoricalMeasurements {
+	public Integer code;
+	public String message;
+	public Collection<Collection<Double>> historical;
+	// usado apenas para exibir no Browser para teste
+	public DataTable dataTable;
+
+	public HistoricalMeasurements() {
+		this.code = 0;
+		this.message = "";
+		this.historical = new ArrayList<Collection<Double>>();
+		this.dataTable = new DataTable();
+	}
+
+	@Override
+	public HistoricalMeasurements clone() {
+		HistoricalMeasurements hm = new HistoricalMeasurements();
+		for (Collection<Double> doubleCol : this.historical) {
+			hm.historical.add(doubleCol);
+		}
+		return hm;
+	}
+}
+
+// http://datatables.net/examples/data_sources/js_array.html
+class DataTable {
+	/* { aaData : [[... ], ...], aoColumns : [ { sTitle : "Título" }, ... ] */
+	public Collection<Collection<Double>> aaData;
+	public Collection<DataTableColumnHeader> aoColumns = new ArrayList<DataTableColumnHeader>();
+}
+
+// https://datatables.net/usage/options
+class SortOption extends ArrayList<Object> {
+	public SortOption(Integer column, String value) {
+		add(column);
+		add(value);
+	}
+}
+
+class SortOptionArray extends ArrayList<SortOption> {
+
+}
+
+class DataTableOptions {
+	public boolean bPaginate = false;
+	public boolean bLengthChange = false;
+	public boolean bFilter = true;
+	public boolean bSort = false;
+	public boolean bInfo = false;
+	public boolean bAutoWidth = false;
+	public SortOptionArray aaSorting = new SortOptionArray();
+
+	public void addSortOption(Integer column, String value) {
+		aaSorting.add(new SortOption(column, value));
+	}
+}
+
+class DataTableColumnHeader {
+	public String sTitle; // título da coluna
+	public String sClass = "center";// nome da classe CSS
+	public String fnRender; // nome da função JavaScript
+
+	public DataTableColumnHeader(String sTitle) {
+		this.sTitle = sTitle;
+		this.sClass = null;
+		this.fnRender = null;
+	}
+
+	public DataTableColumnHeader(String sTitle, String sClass) {
+		this.sTitle = sTitle;
+		this.sClass = sClass;
+		this.fnRender = null;
+	}
+
+	public DataTableColumnHeader(String sTitle, String sClass, String fnRender) {
+		this.sTitle = sTitle;
+		this.sClass = sClass;
+		this.fnRender = fnRender;
+	}
 }

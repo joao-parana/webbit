@@ -3,32 +3,98 @@
 <head>
 <meta charset="UTF-8">
 <title>Console de Gerenciamento</title>
+<!-- DataTables CSS -->
+<link rel="stylesheet" type="text/css"
+	href="css/jquery.dataTables.css">
+
+<!-- jQuery -->
+<script type="text/javascript" charset="utf8"
+	src="js/jquery-1.8.2.min.js"></script>
+
+<!-- DataTables -->
+<script type="text/javascript" charset="utf8"
+	src="js/jquery.dataTables.min.js"></script>
 </head>
 <body>
 	<div>
-		<!-- Send text to websocket -->
-		<input id="userInput" type="text">
-		<button onclick="ws.send(document.getElementById('userInput').value)">Send</button>
-
+		<!-- Send text to websocket   <input  type="text"> -->
+		<div style="float: left">
+			<textarea id="userInput-1" name="userInput" cols="120" rows="5">{  action: "GET_DATA",  params: [ "DateFollowedByStringArray", { year: 2013, month:9, day:9 }, [ 'velocidade2d', 'direcao2d', 'azVelocidade3d' ] ] }
+    </textarea>
+		</div>
+		<div style="float: left">
+			<button
+				onclick="ws.send(document.getElementById('userInput-1').value)">Enviar</button>
+		</div>
+		<div style="float: left">
+			<textarea id="userInput-2" name="userInput" cols="120" rows="5">{  action: "GET_DATA",  params: [ "DateFollowedByIntegerArray", { year: 2013, month:9, day:9 }, [ 100, 101, 8 ] ] }
+    </textarea>
+		</div>
+		<div style="float: left">
+			<button
+				onclick="ws.send(document.getElementById('userInput-2').value)">Enviar</button>
+		</div>
+		<div style="clear: both"></div>
 		<!-- Results -->
+		<hr />
 		<div id="message"></div>
-
+		<hr />
+		<div id="resultTableDiv"></div>
+		<hr />
 		<script>
 			function showMessage(text) {
 				document.getElementById('message').innerHTML = text;
 			}
 
-			var ws = new WebSocket('ws://' + document.location.host + '/wskt');
-			showMessage('Connecting...');
-			ws.onopen = function() {
-				showMessage('Connected!');
+			String.prototype.startsWith = function(pattern) {
+				return this.lastIndexOf(pattern, 0) === 0;
 			};
-			ws.onclose = function() {
-				showMessage('Lost connection');
+
+			String.prototype.endsWith = function(pattern) {
+				var d = this.length - pattern.length;
+				return d >= 0 && this.indexOf(pattern, d) === d;
 			};
-			ws.onmessage = function(msg) {
-				showMessage(msg.data);
-			};
+
+			var ws = {};
+			function init() {
+				showMessage('JQuery pronto !');
+				ws = new WebSocket('ws://' + document.location.host + '/wskt');
+				showMessage('Connecting...');
+				ws.onopen = function() {
+					showMessage('Connected!');
+				};
+				ws.onclose = function() {
+					showMessage('Lost connection');
+				};
+				ws.onmessage = function(msg) {
+					console.log('|' + msg.data + '|');
+					if (msg.data.startsWith('{ "code": ')) {
+						eval('var myServerResponse = ' + msg.data);
+						showMessage('Código de Retorno: '
+								+ myServerResponse.code + ', Mensagem: '
+								+ myServerResponse.message);
+						if (myServerResponse.dataTable) {
+							$('#resultTable').dataTable(
+									myServerResponse.dataTable);
+							// Para usar com HTML e JAX siga o exemplo abaixo: 
+							// $('#resultTable').dataTable({  
+							//	"bProcessing" : true,
+							//	"sAjaxSource" : '../ajax/sources/arrays.txt'
+							// });
+							console.log(myServerResponse.dataTable);
+						}
+					} else {
+						showMessage('Mensagem não formatada ainda: ' + msg.data);
+					}
+				};
+			}
+			var myTablecode = '<table cellpadding="0" cellspacing="0" border="1" ' 
+							+ 'class="display" id="resultTable">'
+					+ '</table>';
+			$('#resultTableDiv').html(myTablecode);
+			/* { "aaData" : [[ ]], "aoColumns" : [ { "sTitle" : "Engine" }, ... ]*/
+
+			$(document).ready(init());
 		</script>
 	</div>
 </body>
