@@ -4,8 +4,7 @@
 <meta charset="UTF-8">
 <title>Console de Gerenciamento</title>
 <!-- DataTables CSS -->
-<link rel="stylesheet" type="text/css"
-	href="css/jquery.dataTables.css">
+<link rel="stylesheet" type="text/css" href="css/jquery.dataTables.css">
 
 <!-- jQuery -->
 <script type="text/javascript" charset="utf8"
@@ -33,6 +32,14 @@
 		<div style="float: left">
 			<button
 				onclick="ws.send(document.getElementById('userInput-2').value)">Enviar</button>
+		</div>
+		<div style="float: left">
+			<textarea id="userInput-3" name="userInput" cols="120" rows="5">{  action: "LOGIN",  params: [ "a" ] }
+    </textarea>
+		</div>
+		<div style="float: left">
+			<button
+				onclick="ws.send(document.getElementById('userInput-3').value)">Enviar</button>
 		</div>
 		<div style="clear: both"></div>
 		<!-- Results -->
