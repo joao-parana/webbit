@@ -13,6 +13,12 @@
 <!-- DataTables -->
 <script type="text/javascript" charset="utf8"
 	src="js/jquery.dataTables.min.js"></script>
+<style>
+.silver-bkgd {
+	background-color: silver;
+	text-align: right;
+}
+</style>
 </head>
 <body>
 	<div>
@@ -26,7 +32,7 @@
 				onclick="ws.send(document.getElementById('userInput-1').value)">Enviar</button>
 		</div>
 		<div style="float: left">
-			<textarea id="userInput-2" name="userInput" cols="120" rows="5">{  action: "GET_DATA",  params: [ "DateFollowedByIntegerArray", { year: 2013, month:9, day:9 }, [ 100, 101, 8 ] ] }
+			<textarea id="userInput-2" name="userInput" cols="120" rows="5">{  action: "GET_DATA",  params: [ "DateFollowedByIntegerArray", { year: 2013, month:9, day:13 }, [ 100, 101, 8 ] ] }
     </textarea>
 		</div>
 		<div style="float: left">
@@ -75,11 +81,16 @@
 				};
 				ws.onmessage = function(msg) {
 					console.log('|' + msg.data + '|');
-					if (msg.data.startsWith('{ "code": ')) {
+					if (msg.data.startsWith('{')) {
 						eval('var myServerResponse = ' + msg.data);
 						showMessage('Código de Retorno: '
 								+ myServerResponse.code + ', Mensagem: '
 								+ myServerResponse.message);
+						// Valores Default 
+						$.extend( $.fn.dataTable.defaults, {
+					        "bFilter": true,
+					        "bSort": true
+					    } );
 						if (myServerResponse.dataTable) {
 							$('#resultTable').dataTable(
 									myServerResponse.dataTable);

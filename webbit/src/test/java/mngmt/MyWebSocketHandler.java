@@ -66,8 +66,6 @@ public class MyWebSocketHandler implements MessageHandler {
 
 	public MyWebSocketHandler() {
 		super();
-		// historicalServiceFacade = new
-		// HistoricalServiceFacade(persistenceUnit);
 		try {
 			init();
 		} catch (Exception e) {
@@ -201,23 +199,25 @@ public class MyWebSocketHandler implements MessageHandler {
 		@SuppressWarnings("unchecked")
 		HistoricalMeasurements historicalMeasurements = new HistoricalMeasurements();
 		try {
-			historicalMeasurements.historical = historicalServiceFacade
-					.getHistoricalAvgByDateAndDataSourceList(simpleDate.year,
-							simpleDate.month, simpleDate.day,
-							(List<Long>) dataSourceIdList);
+			historicalMeasurements.historical = Matrix
+					.transpose(historicalServiceFacade
+							.getHistoricalAvgByDateAndDataSourceList(
+									simpleDate.year, simpleDate.month,
+									simpleDate.day,
+									(List<Long>) dataSourceIdList));
 			logger.info(historicalMeasurements.historical);
-			if (historicalMeasurements.historical.size() == 0) {
+			if (historicalMeasurements.historical.length == 0) {
 				String msg = "Não foi encontrado nenhum registro de histórico para as fontes de dado "
 						+ dataSourceIdList;
 				historicalMeasurements.code = 2001;
 				historicalMeasurements.message = msg;
 				logger.warn(msg);
 			} else {
-				if (historicalMeasurements.historical.size() != (dataSourceIdList
+				if (historicalMeasurements.historical[0].length != (dataSourceIdList
 						.size() + 1)) {
 					String msg = "Número de vetores de dados deveria ser "
-							+ (dataSourceIdList.size()) + " mas veio "
-							+ (historicalMeasurements.historical.size() - 1)
+							+ (dataSourceIdList.size() + 1) + " mas veio "
+							+ (historicalMeasurements.historical[0].length)
 							+ ". dataSourceIdList = " + dataSourceIdList;
 					historicalMeasurements.code = 2002;
 					historicalMeasurements.message = msg;
@@ -237,13 +237,19 @@ public class MyWebSocketHandler implements MessageHandler {
 		// Collection<Collection<Double>> tudo = new
 		// ArrayList<Collection<Double>>();
 		// Collection<Double> linha = new ArrayList<Double>();
-		HistoricalMeasurements hm = historicalMeasurements.clone();
 		DataTable dataTable = new DataTable();
-		dataTable.aaData = hm.historical;
+		dataTable.aaData = historicalMeasurements.getHistoricalForMathCad();
+		dataTable.aoColumns.add(new DataTableColumnHeader("Timestamp"));
+		// dataTable.aoColumns.add(new DataTableColumnHeader("Timestamp",
+		// "silver-bkgd"));
 		dataTable.aoColumns.add(new DataTableColumnHeader("velocidade2d"));
 		dataTable.aoColumns.add(new DataTableColumnHeader("direcao2d"));
 		dataTable.aoColumns.add(new DataTableColumnHeader("azVelocidade3d"));
+		dataTable.aoColumnDefs.add(new ColumnDef(1, 2, 3).setSearchable(false));
+		// Ordenando na primeira coluna
+		dataTable.aaSorting.add(new SortOption(0, "asc"));
 		historicalMeasurements.dataTable = dataTable;
+
 		String json = gson.toJson(historicalMeasurements);
 		return json;
 	}
@@ -451,36 +457,86 @@ class Outgoing {
 class HistoricalMeasurements {
 	public Integer code;
 	public String message;
-	public Collection<Collection<Double>> historical;
+	public double[][] historical;
 	// usado apenas para exibir no Browser para teste
 	public DataTable dataTable;
 
 	public HistoricalMeasurements() {
 		this.code = 0;
 		this.message = "";
-		this.historical = new ArrayList<Collection<Double>>();
+		this.historical = new double[0][0];
 		this.dataTable = new DataTable();
 	}
 
-	@Override
-	public HistoricalMeasurements clone() {
-		HistoricalMeasurements hm = new HistoricalMeasurements();
-		for (Collection<Double> doubleCol : this.historical) {
-			hm.historical.add(doubleCol);
+	public double[][] getHistoricalForMathCad() {
+		double[][] hist = new double[this.historical.length][this.historical[0].length];
+		for (int i = 0; i < this.historical.length; i++) {
+			for (int j = 0; j < this.historical[i].length; j++) {
+				if (j == 0) {
+					// É preciso ajustar para minutos pois o Historico é
+					// geralmente programado para ser gerado de 5 em 5 minutos
+					// podendo ser também outro valor entre 1 e 20.
+					// O ajusto para minutos aqui atende a especificação do
+					// Script MathCad que trata os dados.
+					hist[i][j] = Math.round(this.historical[i][j] / 60000);
+				} else {
+					hist[i][j] = this.historical[i][j];
+				}
+			}
 		}
-		return hm;
+
+		return hist;
 	}
+}
+
+class DataTableI18n {
+	// podemos usar "sUrl": "media/language/pt_BR.txt" substitui as mensagens
+	// abaixo
+	public String sLengthMenu = "Exibir _MENU_ registros por página";
+	public String sZeroRecords = "Não foram encontrados registros - desculpe";
+	public String sInfo = "Mostrando _START_ até _END_ de _TOTAL_ registros";
+	public String sInfoEmpty = "Mostrando 0 até 0 de 0 registros";
+	public String sInfoFiltered = "(filtrado de _MAX_ registros no total)";
+	public String sSearch = "Pesquisar";
+	public DataTableI18nPages oPaginate = new DataTableI18nPages();
+
+}
+
+class DataTableI18nPages {
+	public String sFirst = "1º.";
+	public String sPrevious = "«";
+	public String sNext = "»";
+	public String sLast = "∞";
 }
 
 // http://datatables.net/examples/data_sources/js_array.html
 class DataTable {
-	/* { aaData : [[... ], ...], aoColumns : [ { sTitle : "Título" }, ... ] */
-	public Collection<Collection<Double>> aaData;
+	/*
+	 * { aaData : [[... ], ...], aoColumns : [ { sTitle : "Título" }, ... ],
+	 * "aaSorting": [[ 4, "desc" ]], "aoColumnDefs": [ { "bSearchable": false,
+	 * "bVisible": false, "aTargets": [ 2 ] }, { "bVisible": false, "aTargets":
+	 * [ 3 ] } ], ... }
+	 */
+	public DataTableI18n oLanguage = new DataTableI18n();
+	public double[][] aaData;
+	// public Collection<DataTableColumnHeader> aoColumns = new
+	// ArrayList<DataTableColumnHeader>();
 	public Collection<DataTableColumnHeader> aoColumns = new ArrayList<DataTableColumnHeader>();
+	public Collection<ColumnDef> aoColumnDefs = new ArrayList<ColumnDef>();
+	public SortOptionArray aaSorting = new SortOptionArray();
+	public String sPaginationType = "full_numbers";
+	public Integer sScrollY = 300;
+	public Boolean bJQueryUI = true;
+
+	public DataTable() {
+		aaSorting = new SortOptionArray();
+	}
 }
 
 // https://datatables.net/usage/options
 class SortOption extends ArrayList<Object> {
+	private static final long serialVersionUID = 2113039723573948363L;
+
 	public SortOption(Integer column, String value) {
 		add(column);
 		add(value);
@@ -488,9 +544,10 @@ class SortOption extends ArrayList<Object> {
 }
 
 class SortOptionArray extends ArrayList<SortOption> {
-
+	private static final long serialVersionUID = 4194661736750495985L;
 }
 
+@Deprecated
 class DataTableOptions {
 	public boolean bPaginate = false;
 	public boolean bLengthChange = false;
@@ -498,11 +555,55 @@ class DataTableOptions {
 	public boolean bSort = false;
 	public boolean bInfo = false;
 	public boolean bAutoWidth = false;
+	public boolean bStateSave = true;
+	public String sPaginationType = "full_numbers";
+
+	// $(document).ready(function() {
+	// $('#example').dataTable( {
+	// "aaSorting": [[ 4, "desc" ]]
+	// } );
+	// } );
 	public SortOptionArray aaSorting = new SortOptionArray();
 
 	public void addSortOption(Integer column, String value) {
 		aaSorting.add(new SortOption(column, value));
 	}
+}
+
+//
+// "aoColumnDefs": [ { "bSearchable": false, "bVisible": false,
+// "aTargets": [ 2 ] }, { "bVisible": false, "aTargets": [ 3 ] } ]
+class ColumnDef {
+	public boolean bSearchable = true;
+	public boolean bVisible = true;
+	public Collection<Integer> aTargets = new ArrayList<Integer>();
+
+	public ColumnDef(Integer... aTargets) {
+		for (Integer column : aTargets) {
+			this.aTargets.add(column);
+		}
+	}
+
+	public ColumnDef(boolean bVisible, Integer... aTargets) {
+		this.bVisible = bVisible;
+		for (Integer column : aTargets) {
+			this.aTargets.add(column);
+		}
+	}
+
+	public ColumnDef(boolean bSearchable, boolean bVisible, Integer... aTargets) {
+		this.bSearchable = bSearchable;
+		this.bVisible = bVisible;
+		for (Integer column : aTargets) {
+			this.aTargets.add(column);
+		}
+	}
+
+	public ColumnDef setSearchable(boolean bSearchable) {
+		this.bSearchable = bSearchable;
+		return this;
+	}
+
 }
 
 class DataTableColumnHeader {
@@ -526,5 +627,50 @@ class DataTableColumnHeader {
 		this.sTitle = sTitle;
 		this.sClass = sClass;
 		this.fnRender = fnRender;
+	}
+}
+
+class Matrix {
+	// Dada uma Matriz retorna a Trasnposta (transposed)
+	public static double[][] transpose(final double[][] original) {
+		int largura = 0;
+		int altura = original.length;
+		// determinando a largura
+		for (int i = 0; i < altura; i++) {
+			largura = Math.max(original[i].length, largura);
+		}
+		double[][] m1 = new double[altura][largura];
+		double[][] m2 = new double[largura][altura];
+		System.out.print("altura = " + altura + ", largura = " + largura);
+		// Imprimindo a Matriz Original
+		for (int i = 0; i < altura; i++) {
+			for (int j = 0; j < largura; j++) {
+				try {
+					System.out.print(original[i][j] + " \t");
+					m1[i][j] = original[i][j];
+				} catch (ArrayIndexOutOfBoundsException e) {
+					System.out.print(Double.NaN + " \t");
+					m1[i][j] = Double.NaN;
+				}
+			}
+			System.out.print("\n");
+		}
+		System.out.print("\n\n matrix transpose:\n");
+		// transpose
+		if (altura > 0) {
+			for (int i = 0; i < largura; i++) {
+				for (int j = 0; j < altura; j++) {
+					try {
+						System.out.print(original[j][i] + " \t");
+						m2[i][j] = original[j][i];
+					} catch (ArrayIndexOutOfBoundsException e) {
+						System.out.print(Double.NaN + " \t");
+						m2[i][j] = Double.NaN;
+					}
+				}
+				System.out.print("\n");
+			}
+		}
+		return m2;
 	}
 }
