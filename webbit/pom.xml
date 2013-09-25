@@ -66,7 +66,7 @@
 			</releases>
 		</repository>
 	</repositories>
-		
+
 	<dependencies>
 		<dependency>
 			<groupId>io.netty</groupId>
@@ -97,7 +97,15 @@
 			<version>2.2.4</version>
 			<scope>test</scope>
 		</dependency>
-
+		<dependency>
+			<!-- https://github.com/fernandezpablo85/scribe-java/wiki/getting-started -->
+			<!-- Supports all major 1.0a and 2.0 OAuth APIs out-of-the-box: Google, 
+				Facebook, Windows Live, Yahoo, LinkedIn, Twitter, Foursquare, Evernote, Vimeo, 
+				Yammer and many more! -->
+			<groupId>org.scribe</groupId>
+			<artifactId>scribe</artifactId>
+			<version>1.3.5</version>
+		</dependency>
 		<dependency>
 			<groupId>br.cepel.soma</groupId>
 			<artifactId>somaCommon</artifactId>
